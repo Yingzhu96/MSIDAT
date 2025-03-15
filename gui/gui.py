@@ -4,11 +4,14 @@ from pathlib import Path
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                            QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                            QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox,
-                           QTextEdit, QComboBox, QGroupBox, QFormLayout)
+                           QTextEdit, QComboBox, QGroupBox, QFormLayout,
+                           QTabWidget)
 from PyQt5.QtCore import Qt
 import pandas as pd
 from loguru import logger
-from .compound_match import CompoundMatch
+
+from msidat.match.compound_match import CompoundMatch
+from msidat.molar_mass.cal_molar_mass import MolarMassCalculator
 
 class QTextEditLogger:
     """Custom loguru handler to redirect logs to QTextEdit"""
@@ -18,10 +21,39 @@ class QTextEditLogger:
     def write(self, message):
         self.widget.append(message.strip())
 
-class CompoundMatchGUI(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.compound_match = CompoundMatch()
+        self.mol_calculator = MolarMassCalculator()
+        self.initUI()
+        
+    def initUI(self):
+        self.setWindowTitle('Mass Spectrometry Data Analysis Tool')
+        self.setGeometry(100, 100, 1200, 800)
+        
+        # Create central widget and tab widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+        
+        # Create tab widget
+        tab_widget = QTabWidget()
+        
+        # Create compound match tab
+        compound_match_tab = CompoundMatchTab(self.compound_match)
+        tab_widget.addTab(compound_match_tab, "Compound Match")
+        
+        # Create molar mass calculator tab
+        molar_mass_tab = MolarMassTab(self.mol_calculator)
+        tab_widget.addTab(molar_mass_tab, "Molar Mass Calculator")
+        
+        layout.addWidget(tab_widget)
+
+class CompoundMatchTab(QWidget):
+    def __init__(self, compound_match):
+        super().__init__()
+        self.compound_match = compound_match
         self.initUI()
         self.setup_logger()
         
@@ -49,10 +81,8 @@ class CompoundMatchGUI(QMainWindow):
         self.setWindowTitle('Compound Matching Tool')
         self.setGeometry(100, 100, 1000, 800)
         
-        # Create central widget and layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
+        # Create layout
+        layout = QVBoxLayout(self)
         
         # File selection area
         file_group = QGroupBox("File Selection")
@@ -262,8 +292,135 @@ class CompoundMatchGUI(QMainWindow):
             logger.error(f"Error: {str(e)}")
             QMessageBox.critical(self, 'Error', f'Operation failed: {str(e)}')
 
+class MolarMassTab(QWidget):
+    def __init__(self, calculator):
+        super().__init__()
+        self.calculator = calculator
+        self.initUI()
+        self.setup_logger()
+        
+    def setup_logger(self):
+        """Setup logging configuration"""
+        # Add custom GUI output handler
+        logger.add(
+            QTextEditLogger(self.log_text).write,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+            level="INFO"
+        )
+        
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        
+        # File selection area
+        file_group = QGroupBox("File Selection")
+        file_layout = QVBoxLayout()
+        
+        # Input file selection
+        input_layout = QHBoxLayout()
+        input_label = QLabel('Input File:')
+        self.input_path = QLineEdit()
+        input_btn = QPushButton('Browse...')
+        input_btn.clicked.connect(lambda: self.browse_file(self.input_path, self.update_input_columns))
+        input_layout.addWidget(input_label)
+        input_layout.addWidget(self.input_path)
+        input_layout.addWidget(input_btn)
+        file_layout.addLayout(input_layout)
+        
+        # Column selection
+        column_layout = QHBoxLayout()
+        column_label = QLabel('Formula Column:')
+        self.column_combo = QComboBox()
+        column_layout.addWidget(column_label)
+        column_layout.addWidget(self.column_combo)
+        file_layout.addLayout(column_layout)
+        
+        # Output file selection
+        output_layout = QHBoxLayout()
+        output_label = QLabel('Output File:')
+        self.output_path = QLineEdit()
+        output_btn = QPushButton('Browse...')
+        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
+        output_layout.addWidget(output_label)
+        output_layout.addWidget(self.output_path)
+        output_layout.addWidget(output_btn)
+        file_layout.addLayout(output_layout)
+        
+        file_group.setLayout(file_layout)
+        layout.addWidget(file_group)
+        
+        # Run button
+        run_btn = QPushButton('Calculate Molecular Masses')
+        run_btn.clicked.connect(self.run_calculation)
+        layout.addWidget(run_btn)
+        
+        # Log display area
+        log_group = QGroupBox("Running Log")
+        log_layout = QVBoxLayout()
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        log_layout.addWidget(self.log_text)
+        log_group.setLayout(log_layout)
+        layout.addWidget(log_group)
+        
+    def update_input_columns(self):
+        """Update input file column selection dropdown"""
+        try:
+            df = pd.read_excel(self.input_path.text())
+            self.column_combo.clear()
+            self.column_combo.addItems(df.columns)
+            
+            # Try to auto-select formula column
+            formula_index = df.columns.str.lower().str.contains('formula').argmax()
+            self.column_combo.setCurrentIndex(formula_index)
+        except Exception as e:
+            logger.error(f"Failed to update columns: {str(e)}")
+            
+    def browse_file(self, line_edit, callback=None):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, 'Select File', '', 'Excel Files (*.xlsx *.xls);;All Files (*)'
+        )
+        if file_name:
+            line_edit.setText(file_name)
+            if callback:
+                callback()
+            
+    def browse_save_file(self, line_edit):
+        file_name, _ = QFileDialog.getSaveFileName(
+            self, 'Save File', '', 'Excel Files (*.xlsx);;All Files (*)'
+        )
+        if file_name:
+            if not file_name.endswith('.xlsx'):
+                file_name += '.xlsx'
+            line_edit.setText(file_name)
+            
+    def run_calculation(self):
+        try:
+            # Check file paths
+            input_path = self.input_path.text()
+            output_path = self.output_path.text()
+            formula_column = self.column_combo.currentText()
+            
+            if not all([input_path, output_path, formula_column]):
+                raise ValueError("Please select input/output files and formula column")
+                
+            # Process file
+            self.calculator.input_file = input_path
+            self.calculator.output_file = output_path
+            self.calculator.compounds_col = formula_column
+            self.calculator.process_file()
+            
+            # Show success message
+            QMessageBox.information(self, 'Success', 'Calculation completed. Results have been saved to the specified file.')
+            
+            # Open output directory
+            os.startfile(os.path.dirname(output_path))
+            
+        except Exception as e:
+            logger.error(f"Error: {str(e)}")
+            QMessageBox.critical(self, 'Error', f'Operation failed: {str(e)}')
+
 def main():
     app = QApplication(sys.argv)
-    gui = CompoundMatchGUI()
-    gui.show()
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec_()) 

@@ -79,7 +79,7 @@ class MolarMassCalculator(object):
         # logger.info(ele_group)
         return ele_group
 
-    def file_process(self):
+    def process_file(self):
         df = pd.read_excel(self._input_file,sheet_name=self._input_sheet)
         compounds_series = df.loc[:,self._compounds_col]
         result = np.array([self.cal_molar_mass(v) for v in compounds_series])
