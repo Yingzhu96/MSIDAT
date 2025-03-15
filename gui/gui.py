@@ -12,6 +12,7 @@ from loguru import logger
 
 from msidat.match.compound_match import CompoundMatch
 from msidat.molar_mass.cal_molar_mass import MolarMassCalculator
+from msidat.annotator.make_annotator import Annotator
 
 class QTextEditLogger:
     """Custom loguru handler to redirect logs to QTextEdit"""
@@ -26,6 +27,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.compound_match = CompoundMatch()
         self.mol_calculator = MolarMassCalculator()
+        self.annotator = Annotator()
         self.initUI()
         
     def initUI(self):
@@ -40,13 +42,17 @@ class MainWindow(QMainWindow):
         # Create tab widget
         tab_widget = QTabWidget()
         
+        # Create molar mass calculator tab
+        molar_mass_tab = MolarMassTab(self.mol_calculator)
+        tab_widget.addTab(molar_mass_tab, "Molar Mass Calculator")
+        
         # Create compound match tab
         compound_match_tab = CompoundMatchTab(self.compound_match)
         tab_widget.addTab(compound_match_tab, "Compound Match")
         
-        # Create molar mass calculator tab
-        molar_mass_tab = MolarMassTab(self.mol_calculator)
-        tab_widget.addTab(molar_mass_tab, "Molar Mass Calculator")
+        # Create annotator tab
+        annotator_tab = AnnotatorTab(self.annotator)
+        tab_widget.addTab(annotator_tab, "Annotator")
         
         layout.addWidget(tab_widget)
 
@@ -178,6 +184,23 @@ class CompoundMatchTab(QWidget):
         output_group.setLayout(output_layout)
         layout.addWidget(output_group)
         
+        # Statistics area
+        stats_group = QGroupBox("Relative Error Statistics")
+        stats_layout = QFormLayout()
+        
+        self.avg_error_label = QLabel('--')
+        self.max_error_label = QLabel('--')
+        self.min_error_label = QLabel('--')
+        self.std_error_label = QLabel('--')
+        
+        stats_layout.addRow('Average Relative Error (ppm):', self.avg_error_label)
+        stats_layout.addRow('Maximum Relative Error (ppm):', self.max_error_label)
+        stats_layout.addRow('Minimum Relative Error (ppm):', self.min_error_label)
+        stats_layout.addRow('Standard Deviation (ppm):', self.std_error_label)
+        
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+        
         # Run button
         run_btn = QPushButton('Run Matching')
         run_btn.clicked.connect(self.run_match)
@@ -277,12 +300,24 @@ class CompoundMatchTab(QWidget):
             logger.info("Starting matching process...")
             self.compound_match.match()
             
+            # Update statistics display
+            self.avg_error_label.setText(f"{self.compound_match.avg_rel_error:.2f}")
+            self.max_error_label.setText(f"{self.compound_match.max_rel_error:.2f}")
+            self.min_error_label.setText(f"{self.compound_match.min_rel_error:.2f}")
+            self.std_error_label.setText(f"{self.compound_match.std_rel_error:.2f}")
+            
             # Save results
             logger.info("Saving results...")
             self.compound_match.output_process()
             
-            # Show success message
+            # Log statistics
             logger.info("Matching completed!")
+            logger.info(f"Average relative error: {self.compound_match.avg_rel_error:.2f} ppm")
+            logger.info(f"Maximum relative error: {self.compound_match.max_rel_error:.2f} ppm")
+            logger.info(f"Minimum relative error: {self.compound_match.min_rel_error:.2f} ppm")
+            logger.info(f"Standard deviation: {self.compound_match.std_rel_error:.2f} ppm")
+            
+            # Show success message
             QMessageBox.information(self, 'Success', 'Matching completed. Results have been saved to the specified file.')
             
             # Open output directory
@@ -418,6 +453,192 @@ class MolarMassTab(QWidget):
         except Exception as e:
             logger.error(f"Error: {str(e)}")
             QMessageBox.critical(self, 'Error', f'Operation failed: {str(e)}')
+
+class AnnotatorTab(QWidget):
+    def __init__(self, annotator):
+        super().__init__()
+        self.annotator = annotator
+        self.initUI()
+        self.setup_logger()
+        
+    def setup_logger(self):
+        """Setup loguru logger handlers"""
+        # Remove default console output
+        logger.remove()
+        # Add custom GUI output handler
+        logger.add(
+            QTextEditLogger(self.log_text).write,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+            level="INFO"
+        )
+        # Keep file logging
+        log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'log', 'gui.log')
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        logger.add(
+            log_file,
+            rotation="1 day",
+            retention="30 days",
+            level="DEBUG"
+        )
+        
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        
+        # File selection area
+        file_group = QGroupBox("File Selection")
+        file_layout = QFormLayout()
+        
+        # MSI data file selection
+        self.msi_path = QLineEdit()
+        msi_btn = QPushButton('Browse...')
+        msi_btn.clicked.connect(lambda: self.browse_file(self.msi_path, self.update_msi_sheets))
+        msi_layout = QHBoxLayout()
+        msi_layout.addWidget(self.msi_path)
+        msi_layout.addWidget(msi_btn)
+        file_layout.addRow('MSI Data File:', msi_layout)
+        
+        # MSI sheet selection
+        self.msi_sheet_combo = QComboBox()
+        file_layout.addRow('MSI Sheet:', self.msi_sheet_combo)
+        
+        # Database file selection
+        self.database_path = QLineEdit()
+        database_btn = QPushButton('Browse...')
+        database_btn.clicked.connect(lambda: self.browse_file(self.database_path, self.update_database_sheets))
+        database_layout = QHBoxLayout()
+        database_layout.addWidget(self.database_path)
+        database_layout.addWidget(database_btn)
+        file_layout.addRow('Database File:', database_layout)
+        
+        # Database sheet selection
+        self.database_sheet_combo = QComboBox()
+        file_layout.addRow('Database Sheet:', self.database_sheet_combo)
+        
+        # Output file selection
+        self.output_path = QLineEdit()
+        output_btn = QPushButton('Browse...')
+        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
+        output_layout = QHBoxLayout()
+        output_layout.addWidget(self.output_path)
+        output_layout.addWidget(output_btn)
+        file_layout.addRow('Output File:', output_layout)
+        
+        file_group.setLayout(file_layout)
+        layout.addWidget(file_group)
+        
+        # Parameters area
+        param_group = QGroupBox("Parameters")
+        param_layout = QFormLayout()
+        
+        self.up_limit_ppm = QDoubleSpinBox()
+        self.up_limit_ppm.setRange(-1000, 1000)
+        self.up_limit_ppm.setDecimals(2)
+        self.up_limit_ppm.setValue(10)
+        self.up_limit_ppm.setSingleStep(0.1)
+        param_layout.addRow('Upper Limit (ppm):', self.up_limit_ppm)
+        
+        self.low_limit_ppm = QDoubleSpinBox()
+        self.low_limit_ppm.setRange(-1000, 1000)
+        self.low_limit_ppm.setDecimals(2)
+        self.low_limit_ppm.setValue(-10)
+        self.low_limit_ppm.setSingleStep(0.1)
+        param_layout.addRow('Lower Limit (ppm):', self.low_limit_ppm)
+        
+        param_group.setLayout(param_layout)
+        layout.addWidget(param_group)
+        
+        # Run button
+        run_btn = QPushButton('Run Annotation')
+        run_btn.clicked.connect(self.run_annotation)
+        layout.addWidget(run_btn)
+        
+        # Log area
+        log_group = QGroupBox("Log")
+        log_layout = QVBoxLayout()
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        log_layout.addWidget(self.log_text)
+        log_group.setLayout(log_layout)
+        layout.addWidget(log_group)
+        
+    def update_msi_sheets(self):
+        """Update MSI file sheet selection dropdown"""
+        try:
+            if self.msi_path.text():
+                excel_file = pd.ExcelFile(self.msi_path.text())
+                self.msi_sheet_combo.clear()
+                self.msi_sheet_combo.addItems(excel_file.sheet_names)
+                logger.info(f"Found {len(excel_file.sheet_names)} sheets in MSI file")
+        except Exception as e:
+            logger.error(f"Failed to update MSI sheets: {str(e)}")
+            
+    def update_database_sheets(self):
+        """Update database file sheet selection dropdown"""
+        try:
+            if self.database_path.text():
+                excel_file = pd.ExcelFile(self.database_path.text())
+                self.database_sheet_combo.clear()
+                self.database_sheet_combo.addItems(excel_file.sheet_names)
+                logger.info(f"Found {len(excel_file.sheet_names)} sheets in database file")
+        except Exception as e:
+            logger.error(f"Failed to update database sheets: {str(e)}")
+        
+    def browse_file(self, line_edit, callback=None):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select File",
+            "",
+            "Excel Files (*.xlsx *.xls);;All Files (*.*)"
+        )
+        if file_name:
+            line_edit.setText(file_name)
+            if callback:
+                callback()
+            
+    def browse_save_file(self, line_edit):
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save File",
+            "",
+            "Excel Files (*.xlsx);;All Files (*.*)"
+        )
+        if file_name:
+            if not file_name.endswith('.xlsx'):
+                file_name += '.xlsx'
+            line_edit.setText(file_name)
+            
+    def run_annotation(self):
+        try:
+            # Validate inputs
+            if not self.msi_path.text() or not self.database_path.text() or not self.output_path.text():
+                QMessageBox.warning(self, "Warning", "Please select all required files.")
+                return
+                
+            # Update annotator parameters
+            self.annotator.msidata_path = self.msi_path.text()
+            self.annotator.database_path = self.database_path.text()
+            self.annotator.output_path = self.output_path.text()
+            self.annotator.up_limit_ppm = self.up_limit_ppm.value()
+            self.annotator.low_limit_ppm = self.low_limit_ppm.value()
+            
+            # Set sheet selections
+            self.annotator.msidata_sheet = self.msi_sheet_combo.currentIndex()
+            self.annotator.database_sheet = self.database_sheet_combo.currentIndex()
+            
+            # Run annotation
+            logger.info("Starting annotation process...")
+            logger.info(f"Using MSI sheet: {self.msi_sheet_combo.currentText()}")
+            logger.info(f"Using database sheet: {self.database_sheet_combo.currentText()}")
+            logger.info(f"Using limits: {self.low_limit_ppm.value()} ppm to {self.up_limit_ppm.value()} ppm")
+            result = self.annotator.make_annotator()
+            logger.info("Annotation completed successfully!")
+            logger.info(f"Results saved to: {self.output_path.text()}")
+            
+            QMessageBox.information(self, "Success", "Annotation completed successfully!")
+            
+        except Exception as e:
+            logger.error(f"Error during annotation: {str(e)}")
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
 def main():
     app = QApplication(sys.argv)

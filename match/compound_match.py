@@ -27,7 +27,11 @@ class CompoundMatch(object):
         self._df_output = self._df_target.copy()
         self._df_output[self._output_mz] = self._df_target[self._target_mz].apply(self.find_once)
         self._df_output[self._output_rel_error] = (self._df_output[self._output_mz] - 
-                self._df_output[self._target_mz]) / self._df_output[self._target_mz] * 1e6
+                self._df_output[self._target_mz]) / self._df_output[self._target_mz] * 1e6  # ppm
+        self.avg_rel_error = self._df_output[self._output_rel_error].mean()  # ppm
+        self.max_rel_error = self._df_output[self._output_rel_error].max()  # ppm
+        self.min_rel_error = self._df_output[self._output_rel_error].min()  # ppm
+        self.std_rel_error = self._df_output[self._output_rel_error].std()
         # self._df_output[self._output_intensity] = self._df_output[self._output_mz].apply(self.find_intensity)
 
     def find_once(self, theoretical_mz):
