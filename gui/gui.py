@@ -28,19 +28,42 @@ class MainWindow(QMainWindow):
         self.compound_match = CompoundMatch()
         self.mol_calculator = MolarMassCalculator()
         self.annotator = Annotator()
+        self.setup_style()
         self.initUI()
         
+    def setup_style(self):
+        """Set global application style"""
+        app = QApplication.instance()
+        # 设置全局字体大小
+        font = app.font()
+        font.setPointSize(12)  # 设置全局字体大小为12pt
+        app.setFont(font)
+        
     def initUI(self):
-        self.setWindowTitle('Mass Spectrometry Data Analysis Tool')
-        self.setGeometry(100, 100, 1200, 800)
+        self.setWindowTitle('Mass Spectrometry Data Analysis Tool v1.0')
+        self.setGeometry(100, 100, 1400, 900)  # 增加窗口尺寸
         
         # Create central widget and tab widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
+        layout.setSpacing(15)  # 增加布局间距
         
         # Create tab widget
         tab_widget = QTabWidget()
+        tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #C2C7CB;
+                padding: 10px;
+            }
+            QTabWidget::tab-bar {
+                left: 5px;
+            }
+            QTabBar::tab {
+                padding: 8px 20px;
+                min-width: 200px;
+            }
+        """)
         
         # Create molar mass calculator tab
         molar_mass_tab = MolarMassTab(self.mol_calculator)
@@ -59,6 +82,18 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(log_tab, "Log")
         
         layout.addWidget(tab_widget)
+        
+        # Add developer info at the bottom
+        info_label = QLabel("Developed by 朱颖 & 贾历平 | 2025.3.16")
+        info_label.setStyleSheet("""
+            QLabel {
+                color: #666666;
+                padding: 5px;
+                font-size: 10pt;
+            }
+        """)
+        info_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(info_label)
 
 class LogTab(QWidget):
     def __init__(self):
@@ -68,14 +103,28 @@ class LogTab(QWidget):
         
     def initUI(self):
         layout = QVBoxLayout(self)
+        layout.setSpacing(15)
         
         # Log display area
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet("""
+            QTextEdit {
+                font-size: 12pt;
+                padding: 10px;
+            }
+        """)
         layout.addWidget(self.log_text)
         
         # Clear button
         clear_btn = QPushButton('Clear Log')
+        clear_btn.setMinimumSize(200, 40)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12pt;
+                padding: 10px;
+            }
+        """)
         clear_btn.clicked.connect(self.clear_log)
         layout.addWidget(clear_btn)
         
@@ -111,113 +160,187 @@ class CompoundMatchTab(QWidget):
         
     def initUI(self):
         self.setWindowTitle('Compound Matching Tool')
-        self.setGeometry(100, 100, 1000, 800)
         
-        # Create layout
+        # Create main layout
         layout = QVBoxLayout(self)
+        layout.setSpacing(15)
         
-        # File selection area
+        # File selection area (full width)
         file_group = QGroupBox("File Selection")
-        file_layout = QVBoxLayout()
+        file_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 12pt;
+                padding-top: 15px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
+        file_layout = QFormLayout()
+        file_layout.setSpacing(20)
+        file_layout.setContentsMargins(15, 15, 15, 15)
         
         # Source file selection
         source_layout = QHBoxLayout()
-        source_label = QLabel('Source File:')
         self.source_path = QLineEdit()
+        self.source_path.setMinimumHeight(35)
         source_btn = QPushButton('Browse...')
+        source_btn.setMinimumSize(120, 35)
         source_btn.clicked.connect(lambda: self.browse_file(self.source_path, self.update_source_columns))
-        source_layout.addWidget(source_label)
         source_layout.addWidget(self.source_path)
         source_layout.addWidget(source_btn)
-        file_layout.addLayout(source_layout)
+        file_layout.addRow('Source File:', source_layout)
         
         # Target file selection
         target_layout = QHBoxLayout()
-        target_label = QLabel('Target File:')
         self.target_path = QLineEdit()
+        self.target_path.setMinimumHeight(35)
         target_btn = QPushButton('Browse...')
+        target_btn.setMinimumSize(120, 35)
         target_btn.clicked.connect(lambda: self.browse_file(self.target_path, self.update_target_columns))
-        target_layout.addWidget(target_label)
         target_layout.addWidget(self.target_path)
         target_layout.addWidget(target_btn)
-        file_layout.addLayout(target_layout)
+        file_layout.addRow('Target File:', target_layout)
+        
+        # Output file selection
+        output_layout = QHBoxLayout()
+        self.output_path = QLineEdit()
+        self.output_path.setMinimumHeight(35)
+        output_btn = QPushButton('Browse...')
+        output_btn.setMinimumSize(120, 35)
+        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
+        output_layout.addWidget(self.output_path)
+        output_layout.addWidget(output_btn)
+        file_layout.addRow('Output File:', output_layout)
         
         file_group.setLayout(file_layout)
         layout.addWidget(file_group)
         
+        # Create two-column layout for the rest
+        two_column_widget = QWidget()
+        two_column_layout = QHBoxLayout(two_column_widget)
+        two_column_layout.setSpacing(20)
+        
+        # Left column (5.5)
+        left_column = QVBoxLayout()
+        left_column.setSpacing(15)
+        
         # Column settings area
         columns_group = QGroupBox("Column Settings")
+        columns_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 12pt;
+                padding-top: 15px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
         columns_layout = QFormLayout()
+        columns_layout.setSpacing(20)
+        columns_layout.setContentsMargins(15, 15, 15, 15)
         
         # Source data column selection
         self.source_mz_combo = QComboBox()
+        self.source_mz_combo.setMinimumHeight(35)
         self.source_intensity_combo = QComboBox()
+        self.source_intensity_combo.setMinimumHeight(35)
         columns_layout.addRow("Source m/z Column:", self.source_mz_combo)
         columns_layout.addRow("Source Intensity Column:", self.source_intensity_combo)
         
         # Target data column selection
         self.target_mz_combo = QComboBox()
+        self.target_mz_combo.setMinimumHeight(35)
         columns_layout.addRow("Target m/z Column:", self.target_mz_combo)
         
         # Output column names
         self.output_mz = QLineEdit('measured m/z')
+        self.output_mz.setMinimumHeight(35)
         self.output_rel_error = QLineEdit('Relative Error(ppm)')
+        self.output_rel_error.setMinimumHeight(35)
         self.output_intensity = QLineEdit('Intensity')
+        self.output_intensity.setMinimumHeight(35)
         columns_layout.addRow("Output m/z Column:", self.output_mz)
         columns_layout.addRow("Output Relative Error Column:", self.output_rel_error)
         columns_layout.addRow("Output Intensity Column:", self.output_intensity)
         
         columns_group.setLayout(columns_layout)
-        layout.addWidget(columns_group)
+        left_column.addWidget(columns_group)
         
         # Parameter settings area
         params_group = QGroupBox("Parameter Settings")
-        params_layout = QHBoxLayout()
+        params_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 12pt;
+                padding-top: 15px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
+        params_layout = QFormLayout()
+        params_layout.setSpacing(20)
+        params_layout.setContentsMargins(15, 15, 15, 15)
         
         # Intensity threshold setting
-        intensity_layout = QVBoxLayout()
-        intensity_label = QLabel('Intensity Threshold:')
         self.intensity_spin = QSpinBox()
+        self.intensity_spin.setMinimumHeight(35)
         self.intensity_spin.setRange(0, 1000000)
         self.intensity_spin.setValue(1000)
-        intensity_layout.addWidget(intensity_label)
-        intensity_layout.addWidget(self.intensity_spin)
-        params_layout.addLayout(intensity_layout)
+        params_layout.addRow('Intensity Threshold:', self.intensity_spin)
         
         # m/z tolerance setting
-        tolerance_layout = QVBoxLayout()
-        tolerance_label = QLabel('m/z Tolerance (ppm):')
         self.tolerance_spin = QDoubleSpinBox()
+        self.tolerance_spin.setMinimumHeight(35)
         self.tolerance_spin.setRange(0, 1000)
         self.tolerance_spin.setValue(20)
-        tolerance_layout.addWidget(tolerance_label)
-        tolerance_layout.addWidget(self.tolerance_spin)
-        params_layout.addLayout(tolerance_layout)
+        params_layout.addRow('m/z Tolerance (ppm):', self.tolerance_spin)
         
         params_group.setLayout(params_layout)
-        layout.addWidget(params_group)
+        left_column.addWidget(params_group)
         
-        # Output file setting
-        output_group = QGroupBox("Output Settings")
-        output_layout = QHBoxLayout()
-        output_label = QLabel('Output File:')
-        self.output_path = QLineEdit()
-        output_btn = QPushButton('Browse...')
-        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
-        output_layout.addWidget(output_label)
-        output_layout.addWidget(self.output_path)
-        output_layout.addWidget(output_btn)
-        output_group.setLayout(output_layout)
-        layout.addWidget(output_group)
+        # Add left column to two-column layout with stretch factor 55
+        two_column_layout.addLayout(left_column, 55)
+        
+        # Right column (4.5)
+        right_column = QVBoxLayout()
+        right_column.setSpacing(15)
         
         # Statistics area
         stats_group = QGroupBox("Relative Error Statistics")
+        stats_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 12pt;
+                padding-top: 15px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
         stats_layout = QFormLayout()
+        stats_layout.setSpacing(20)
+        stats_layout.setContentsMargins(15, 15, 15, 15)
         
         self.avg_error_label = QLabel('--')
+        self.avg_error_label.setMinimumHeight(35)
         self.max_error_label = QLabel('--')
+        self.max_error_label.setMinimumHeight(35)
         self.min_error_label = QLabel('--')
+        self.min_error_label.setMinimumHeight(35)
         self.std_error_label = QLabel('--')
+        self.std_error_label.setMinimumHeight(35)
         
         stats_layout.addRow('Average Relative Error (ppm):', self.avg_error_label)
         stats_layout.addRow('Maximum Relative Error (ppm):', self.max_error_label)
@@ -225,10 +348,24 @@ class CompoundMatchTab(QWidget):
         stats_layout.addRow('Standard Deviation (ppm):', self.std_error_label)
         
         stats_group.setLayout(stats_layout)
-        layout.addWidget(stats_group)
+        right_column.addWidget(stats_group)
+        right_column.addStretch()
+        
+        # Add right column to two-column layout with stretch factor 45
+        two_column_layout.addLayout(right_column, 45)
+        
+        # Add two-column widget to main layout
+        layout.addWidget(two_column_widget)
         
         # Run button
         run_btn = QPushButton('Run Matching')
+        run_btn.setMinimumSize(300, 50)
+        run_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12pt;
+                padding: 10px;
+            }
+        """)
         run_btn.clicked.connect(self.run_match)
         layout.addWidget(run_btn)
         
@@ -270,7 +407,7 @@ class CompoundMatchTab(QWidget):
             line_edit.setText(file_name)
             if callback:
                 callback()
-            
+                
     def browse_save_file(self, line_edit):
         file_name, _ = QFileDialog.getSaveFileName(
             self, 'Save File', '', 'Excel Files (*.xlsx);;All Files (*)'
@@ -348,20 +485,34 @@ class MolarMassTab(QWidget):
         
     def initUI(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)  # 设置垂直间距
+        layout.setSpacing(15)  # 增加垂直间距
         
         # File selection and settings area
         settings_group = QGroupBox("Settings")
+        settings_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 12pt;
+                padding-top: 15px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
         settings_layout = QFormLayout()
-        settings_layout.setSpacing(15)  # 设置表单项间距
+        settings_layout.setSpacing(20)  # 增加表单项间距
+        settings_layout.setContentsMargins(15, 15, 15, 15)  # 增加边距
         
         # Elements mass file selection
         elements_layout = QHBoxLayout()
         self.elements_path = QLineEdit()
+        self.elements_path.setMinimumHeight(35)  # 增加输入框高度
         default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
-        self.elements_path.setText(default_path)  # 设置默认值
+        self.elements_path.setText(default_path)
         elements_btn = QPushButton('Browse...')
-        elements_btn.setFixedWidth(100)
+        elements_btn.setMinimumSize(120, 35)  # 增加按钮尺寸
         elements_btn.clicked.connect(lambda: self.browse_file(self.elements_path))
         elements_layout.addWidget(self.elements_path)
         elements_layout.addWidget(elements_btn)
@@ -370,8 +521,9 @@ class MolarMassTab(QWidget):
         # Input file selection
         input_layout = QHBoxLayout()
         self.input_path = QLineEdit()
+        self.input_path.setMinimumHeight(35)
         input_btn = QPushButton('Browse...')
-        input_btn.setFixedWidth(100)  # 固定按钮宽度
+        input_btn.setMinimumSize(120, 35)
         input_btn.clicked.connect(lambda: self.browse_file(self.input_path, self.update_input_columns))
         input_layout.addWidget(self.input_path)
         input_layout.addWidget(input_btn)
@@ -379,13 +531,15 @@ class MolarMassTab(QWidget):
         
         # Formula column selection
         self.column_combo = QComboBox()
+        self.column_combo.setMinimumHeight(35)
         settings_layout.addRow('Formula Column:', self.column_combo)
         
         # Output file selection
         output_layout = QHBoxLayout()
         self.output_path = QLineEdit()
+        self.output_path.setMinimumHeight(35)
         output_btn = QPushButton('Browse...')
-        output_btn.setFixedWidth(100)  # 固定按钮宽度
+        output_btn.setMinimumSize(120, 35)
         output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
         output_layout.addWidget(self.output_path)
         output_layout.addWidget(output_btn)
@@ -395,19 +549,18 @@ class MolarMassTab(QWidget):
         layout.addWidget(settings_group)
         
         # Run button area
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()  # 添加弹性空间使按钮居中
         run_btn = QPushButton('Calculate Molecular Masses')
-        # run_btn.setFixedWidth(400)  # 增加按钮宽度
-        # run_btn.setFixedHeight(40)  # 增加按钮高度
-        # run_btn.setStyleSheet("font-size: 12pt;")  # 设置字体大小
+        run_btn.setMinimumHeight(50)  # 只设置高度
+        run_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12pt;
+                padding: 10px;
+            }
+        """)
         run_btn.clicked.connect(self.run_calculation)
-        button_layout.addWidget(run_btn)
-        button_layout.addStretch()  # 添加弹性空间使按钮居中
-        
-        layout.addLayout(button_layout)
-        layout.addStretch()  # 添加弹性空间将内容推到顶部
-        
+        layout.addWidget(run_btn)
+        layout.addStretch()
+
     def update_input_columns(self):
         """Update input file column selection dropdown"""
         try:
@@ -475,46 +628,56 @@ class AnnotatorTab(QWidget):
         
     def initUI(self):
         self.setWindowTitle('Compound Annotation Tool')
-        self.setGeometry(100, 100, 1000, 800)
         
         # Create layout
         layout = QVBoxLayout(self)
+        layout.setSpacing(15)
         
         # File selection area
         file_group = QGroupBox("File Selection")
         file_layout = QFormLayout()
+        file_layout.setSpacing(20)
+        file_layout.setContentsMargins(15, 15, 15, 15)
         
         # MSI data file selection
-        self.msi_path = QLineEdit()
-        msi_btn = QPushButton('Browse...')
-        msi_btn.clicked.connect(lambda: self.browse_file(self.msi_path, self.update_msi_sheets))
         msi_layout = QHBoxLayout()
+        self.msi_path = QLineEdit()
+        self.msi_path.setMinimumHeight(35)
+        msi_btn = QPushButton('Browse...')
+        msi_btn.setMinimumSize(120, 35)
+        msi_btn.clicked.connect(lambda: self.browse_file(self.msi_path, self.update_msi_sheets))
         msi_layout.addWidget(self.msi_path)
         msi_layout.addWidget(msi_btn)
         file_layout.addRow('MSI Data File:', msi_layout)
         
         # MSI sheet selection
         self.msi_sheet_combo = QComboBox()
+        self.msi_sheet_combo.setMinimumHeight(35)
         file_layout.addRow('MSI Sheet:', self.msi_sheet_combo)
         
         # Database file selection
-        self.database_path = QLineEdit()
-        database_btn = QPushButton('Browse...')
-        database_btn.clicked.connect(lambda: self.browse_file(self.database_path, self.update_database_sheets))
         database_layout = QHBoxLayout()
+        self.database_path = QLineEdit()
+        self.database_path.setMinimumHeight(35)
+        database_btn = QPushButton('Browse...')
+        database_btn.setMinimumSize(120, 35)
+        database_btn.clicked.connect(lambda: self.browse_file(self.database_path, self.update_database_sheets))
         database_layout.addWidget(self.database_path)
         database_layout.addWidget(database_btn)
         file_layout.addRow('Database File:', database_layout)
         
         # Database sheet selection
         self.database_sheet_combo = QComboBox()
+        self.database_sheet_combo.setMinimumHeight(35)
         file_layout.addRow('Database Sheet:', self.database_sheet_combo)
         
         # Output file selection
-        self.output_path = QLineEdit()
-        output_btn = QPushButton('Browse...')
-        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
         output_layout = QHBoxLayout()
+        self.output_path = QLineEdit()
+        self.output_path.setMinimumHeight(35)
+        output_btn = QPushButton('Browse...')
+        output_btn.setMinimumSize(120, 35)
+        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
         output_layout.addWidget(self.output_path)
         output_layout.addWidget(output_btn)
         file_layout.addRow('Output File:', output_layout)
@@ -525,8 +688,11 @@ class AnnotatorTab(QWidget):
         # Parameters area
         param_group = QGroupBox("Parameters")
         param_layout = QFormLayout()
+        param_layout.setSpacing(20)
+        param_layout.setContentsMargins(15, 15, 15, 15)
         
         self.up_limit_ppm = QDoubleSpinBox()
+        self.up_limit_ppm.setMinimumHeight(35)
         self.up_limit_ppm.setRange(-1000, 1000)
         self.up_limit_ppm.setDecimals(2)
         self.up_limit_ppm.setValue(10)
@@ -534,6 +700,7 @@ class AnnotatorTab(QWidget):
         param_layout.addRow('Upper Limit (ppm):', self.up_limit_ppm)
         
         self.low_limit_ppm = QDoubleSpinBox()
+        self.low_limit_ppm.setMinimumHeight(35)
         self.low_limit_ppm.setRange(-1000, 1000)
         self.low_limit_ppm.setDecimals(2)
         self.low_limit_ppm.setValue(-10)
@@ -543,10 +710,25 @@ class AnnotatorTab(QWidget):
         param_group.setLayout(param_layout)
         layout.addWidget(param_group)
         
+        # Add spacing between parameter group and run button
+        spacer = QWidget()
+        spacer.setFixedHeight(20)
+        layout.addWidget(spacer)
+        
         # Run button
         run_btn = QPushButton('Run Annotation')
+        run_btn.setMinimumSize(300, 50)
+        run_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12pt;
+                padding: 10px;
+            }
+        """)
         run_btn.clicked.connect(self.run_annotation)
         layout.addWidget(run_btn)
+        
+        # Add spacing at the bottom
+        layout.addStretch(1)
         
     def update_msi_sheets(self):
         """Update MSI file sheet selection dropdown"""
