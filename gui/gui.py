@@ -54,14 +54,30 @@ class MainWindow(QMainWindow):
         annotator_tab = AnnotatorTab(self.annotator)
         tab_widget.addTab(annotator_tab, "Annotator")
         
+        # Create log tab
+        log_tab = LogTab()
+        tab_widget.addTab(log_tab, "Log")
+        
         layout.addWidget(tab_widget)
 
-class CompoundMatchTab(QWidget):
-    def __init__(self, compound_match):
+class LogTab(QWidget):
+    def __init__(self):
         super().__init__()
-        self.compound_match = compound_match
         self.initUI()
         self.setup_logger()
+        
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        
+        # Log display area
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        layout.addWidget(self.log_text)
+        
+        # Clear button
+        clear_btn = QPushButton('Clear Log')
+        clear_btn.clicked.connect(self.clear_log)
+        layout.addWidget(clear_btn)
         
     def setup_logger(self):
         """Setup loguru logger handlers"""
@@ -82,6 +98,16 @@ class CompoundMatchTab(QWidget):
             retention="30 days",
             level="DEBUG"
         )
+        
+    def clear_log(self):
+        """Clear the log display"""
+        self.log_text.clear()
+
+class CompoundMatchTab(QWidget):
+    def __init__(self, compound_match):
+        super().__init__()
+        self.compound_match = compound_match
+        self.initUI()
         
     def initUI(self):
         self.setWindowTitle('Compound Matching Tool')
@@ -206,15 +232,6 @@ class CompoundMatchTab(QWidget):
         run_btn.clicked.connect(self.run_match)
         layout.addWidget(run_btn)
         
-        # Log display area
-        log_group = QGroupBox("Running Log")
-        log_layout = QVBoxLayout()
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
-        
     def update_source_columns(self):
         """Update source data column selection dropdowns"""
         try:
@@ -263,10 +280,6 @@ class CompoundMatchTab(QWidget):
                 file_name += '.xlsx'
             line_edit.setText(file_name)
             
-    def log_message(self, message):
-        """Log message using loguru"""
-        logger.info(message)
-        
     def run_match(self):
         try:
             # Check file paths
@@ -332,70 +345,68 @@ class MolarMassTab(QWidget):
         super().__init__()
         self.calculator = calculator
         self.initUI()
-        self.setup_logger()
-        
-    def setup_logger(self):
-        """Setup logging configuration"""
-        # Add custom GUI output handler
-        logger.add(
-            QTextEditLogger(self.log_text).write,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-            level="INFO"
-        )
         
     def initUI(self):
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)  # 设置垂直间距
         
-        # File selection area
-        file_group = QGroupBox("File Selection")
-        file_layout = QVBoxLayout()
+        # File selection and settings area
+        settings_group = QGroupBox("Settings")
+        settings_layout = QFormLayout()
+        settings_layout.setSpacing(15)  # 设置表单项间距
+        
+        # Elements mass file selection
+        elements_layout = QHBoxLayout()
+        self.elements_path = QLineEdit()
+        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
+        self.elements_path.setText(default_path)  # 设置默认值
+        elements_btn = QPushButton('Browse...')
+        elements_btn.setFixedWidth(100)
+        elements_btn.clicked.connect(lambda: self.browse_file(self.elements_path))
+        elements_layout.addWidget(self.elements_path)
+        elements_layout.addWidget(elements_btn)
+        settings_layout.addRow('Elements Mass File:', elements_layout)
         
         # Input file selection
         input_layout = QHBoxLayout()
-        input_label = QLabel('Input File:')
         self.input_path = QLineEdit()
         input_btn = QPushButton('Browse...')
+        input_btn.setFixedWidth(100)  # 固定按钮宽度
         input_btn.clicked.connect(lambda: self.browse_file(self.input_path, self.update_input_columns))
-        input_layout.addWidget(input_label)
         input_layout.addWidget(self.input_path)
         input_layout.addWidget(input_btn)
-        file_layout.addLayout(input_layout)
+        settings_layout.addRow('Input File:', input_layout)
         
-        # Column selection
-        column_layout = QHBoxLayout()
-        column_label = QLabel('Formula Column:')
+        # Formula column selection
         self.column_combo = QComboBox()
-        column_layout.addWidget(column_label)
-        column_layout.addWidget(self.column_combo)
-        file_layout.addLayout(column_layout)
+        settings_layout.addRow('Formula Column:', self.column_combo)
         
         # Output file selection
         output_layout = QHBoxLayout()
-        output_label = QLabel('Output File:')
         self.output_path = QLineEdit()
         output_btn = QPushButton('Browse...')
+        output_btn.setFixedWidth(100)  # 固定按钮宽度
         output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
-        output_layout.addWidget(output_label)
         output_layout.addWidget(self.output_path)
         output_layout.addWidget(output_btn)
-        file_layout.addLayout(output_layout)
+        settings_layout.addRow('Output File:', output_layout)
         
-        file_group.setLayout(file_layout)
-        layout.addWidget(file_group)
+        settings_group.setLayout(settings_layout)
+        layout.addWidget(settings_group)
         
-        # Run button
+        # Run button area
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()  # 添加弹性空间使按钮居中
         run_btn = QPushButton('Calculate Molecular Masses')
+        # run_btn.setFixedWidth(400)  # 增加按钮宽度
+        # run_btn.setFixedHeight(40)  # 增加按钮高度
+        # run_btn.setStyleSheet("font-size: 12pt;")  # 设置字体大小
         run_btn.clicked.connect(self.run_calculation)
-        layout.addWidget(run_btn)
+        button_layout.addWidget(run_btn)
+        button_layout.addStretch()  # 添加弹性空间使按钮居中
         
-        # Log display area
-        log_group = QGroupBox("Running Log")
-        log_layout = QVBoxLayout()
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
+        layout.addLayout(button_layout)
+        layout.addStretch()  # 添加弹性空间将内容推到顶部
         
     def update_input_columns(self):
         """Update input file column selection dropdown"""
@@ -433,14 +444,16 @@ class MolarMassTab(QWidget):
             # Check file paths
             input_path = self.input_path.text()
             output_path = self.output_path.text()
+            elements_path = self.elements_path.text()
             formula_column = self.column_combo.currentText()
             
-            if not all([input_path, output_path, formula_column]):
-                raise ValueError("Please select input/output files and formula column")
+            if not all([input_path, output_path, elements_path, formula_column]):
+                raise ValueError("Please select all required files and formula column")
                 
             # Process file
             self.calculator.input_file = input_path
             self.calculator.output_file = output_path
+            self.calculator.elements_mass_file = elements_path
             self.calculator.compounds_col = formula_column
             self.calculator.process_file()
             
@@ -459,29 +472,12 @@ class AnnotatorTab(QWidget):
         super().__init__()
         self.annotator = annotator
         self.initUI()
-        self.setup_logger()
-        
-    def setup_logger(self):
-        """Setup loguru logger handlers"""
-        # Remove default console output
-        logger.remove()
-        # Add custom GUI output handler
-        logger.add(
-            QTextEditLogger(self.log_text).write,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-            level="INFO"
-        )
-        # Keep file logging
-        log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'log', 'gui.log')
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        logger.add(
-            log_file,
-            rotation="1 day",
-            retention="30 days",
-            level="DEBUG"
-        )
         
     def initUI(self):
+        self.setWindowTitle('Compound Annotation Tool')
+        self.setGeometry(100, 100, 1000, 800)
+        
+        # Create layout
         layout = QVBoxLayout(self)
         
         # File selection area
@@ -551,15 +547,6 @@ class AnnotatorTab(QWidget):
         run_btn = QPushButton('Run Annotation')
         run_btn.clicked.connect(self.run_annotation)
         layout.addWidget(run_btn)
-        
-        # Log area
-        log_group = QGroupBox("Log")
-        log_layout = QVBoxLayout()
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
         
     def update_msi_sheets(self):
         """Update MSI file sheet selection dropdown"""
