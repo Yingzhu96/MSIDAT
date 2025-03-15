@@ -1,6 +1,12 @@
 import sys
 import os
 from pathlib import Path
+
+# 设置模块搜索路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(current_dir))
+sys.path.insert(0, parent_dir)
+
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                            QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                            QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox,
@@ -8,11 +14,15 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QTabWidget)
 from PyQt5.QtCore import Qt
 import pandas as pd
-from loguru import logger
 
+# 导入自定义模块
 from msidat.match.compound_match import CompoundMatch
 from msidat.molar_mass.cal_molar_mass import MolarMassCalculator
 from msidat.annotator.make_annotator import Annotator
+
+# 初始化logger
+from loguru import logger
+import sys
 
 class QTextEditLogger:
     """Custom loguru handler to redirect logs to QTextEdit"""
@@ -20,7 +30,27 @@ class QTextEditLogger:
         self.widget = widget
 
     def write(self, message):
-        self.widget.append(message.strip())
+        if self.widget and not self.widget.isDestroyed():
+            self.widget.append(message.strip())
+
+def setup_global_logger():
+    """Setup global logger configuration"""
+    try:
+        # 移除所有已存在的处理器
+        logger.configure(handlers=[], extra={})
+        
+        # 添加默认的控制台输出（仅在开发环境中）
+        if getattr(sys, 'frozen', False):
+            # 在打包环境中不添加控制台输出
+            pass
+        else:
+            logger.add(sys.stderr, level="INFO")
+            
+    except Exception as e:
+        print(f"全局日志系统初始化失败: {str(e)}")
+
+# 初始化全局logger配置
+setup_global_logger()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -129,25 +159,44 @@ class LogTab(QWidget):
         layout.addWidget(clear_btn)
         
     def setup_logger(self):
-        """Setup loguru logger handlers"""
-        # Remove default console output
-        logger.remove()
-        # Add custom GUI output handler
-        logger.add(
-            QTextEditLogger(self.log_text).write,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-            level="INFO"
-        )
-        # Keep file logging
-        log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'log', 'gui.log')
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        logger.add(
-            log_file,
-            rotation="1 day",
-            retention="30 days",
-            level="DEBUG"
-        )
-        
+        """Setup loguru logger handlers for GUI"""
+        try:
+            # 添加GUI输出处理器
+            gui_handler_id = logger.add(
+                QTextEditLogger(self.log_text).write,
+                format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+                level="INFO"
+            )
+            
+            # 添加文件日志
+            try:
+                if getattr(sys, 'frozen', False):
+                    # 在打包环境中使用相对于exe的路径
+                    base_path = os.path.dirname(sys.executable)
+                else:
+                    # 在开发环境中使用相对于脚本的路径
+                    base_path = os.path.dirname(os.path.dirname(__file__))
+                
+                log_dir = os.path.join(base_path, 'log')
+                os.makedirs(log_dir, exist_ok=True)
+                log_file = os.path.join(log_dir, 'gui.log')
+                
+                file_handler_id = logger.add(
+                    log_file,
+                    rotation="1 day",
+                    retention="30 days",
+                    level="DEBUG",
+                    encoding="utf-8"
+                )
+                
+                logger.info("日志系统初始化成功")
+                
+            except Exception as e:
+                logger.error(f"文件日志初始化失败: {str(e)}")
+                
+        except Exception as e:
+            print(f"GUI日志系统初始化失败: {str(e)}")
+            
     def clear_log(self):
         """Clear the log display"""
         self.log_text.clear()
@@ -813,4 +862,7 @@ def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_()) 
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main() 

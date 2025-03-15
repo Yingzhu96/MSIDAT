@@ -1,53 +1,63 @@
-import os,sys
+import os
+import sys
 from loguru import logger
 
-logger.remove(0)
-folder_ = os.path.join(os.path.dirname(os.path.dirname(__file__)),'log')
-prefix_ = "/"
-rotation_ = "1 days"
-retention_ = "30 days"
-encoding_ = "utf-8"
-backtrace_ = True
-diagnose_ = True
+def setup_msidat_logger():
+    """Setup msidat logger configuration"""
+    try:
+        # 移除所有已存在的处理器
+        logger.configure(handlers=[], extra={})
+        
+        # 确定日志文件夹路径
+        if getattr(sys, 'frozen', False):
+            # 在打包环境中使用相对于exe的路径
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # 在开发环境中使用相对于脚本的路径
+            base_path = os.path.dirname(os.path.dirname(__file__))
+        
+        folder_ = os.path.join(base_path, 'log')
+        os.makedirs(folder_, exist_ok=True)
+        
+        # 日志配置
+        prefix_ = os.path.sep  # 使用系统路径分隔符
+        rotation_ = "1 days"
+        retention_ = "30 days"
+        encoding_ = "utf-8"
+        backtrace_ = True
+        diagnose_ = True
+        
+        # 日志格式
+        format_ = '<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> ' \
+                 '| <cyan>{name}</cyan>:<cyan>{function}</cyan>:<yellow>{line}</yellow> - <level>{message}</level>'
+        
+        # 只在开发环境中添加控制台输出
+        if not getattr(sys, 'frozen', False):
+            logger.add(sys.stderr, level="INFO", format=format_, colorize=True)
+        
+        # 添加文件处理器
+        log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        for level in log_levels:
+            log_file = os.path.join(folder_, f"{level.lower()}.log")
+            logger.add(
+                log_file,
+                level=level,
+                format=format_,
+                colorize=False,
+                rotation=rotation_,
+                retention=retention_,
+                encoding=encoding_,
+                backtrace=backtrace_,
+                diagnose=diagnose_,
+                filter=lambda record, level=level: record["level"].no >= logger.level(level).no
+            )
+        
+        logger.info("MSIDAT日志系统初始化成功")
+        return True
+        
+    except Exception as e:
+        print(f"MSIDAT日志系统初始化失败: {str(e)}")
+        return False
 
-# 格式里面添加了process和thread记录，方便查看多进程和线程程序
-# '| <magenta>{process}</magenta>:<yellow>{thread}</yellow> ' \
-format_ = '<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> ' \
-            '| <cyan>{name}</cyan>:<cyan>{function}</cyan>:<yellow>{line}</yellow> - <level>{message}</level>'
-
-# 这里面采用了层次式的日志记录方式，就是低级日志文件会记录比他高的所有级别日志，这样可以做到低等级日志最丰富，高级别日志更少更关键
-# debug
-logger.add(folder_ + prefix_ + "debug.log", level="DEBUG", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=False,
-            rotation=rotation_, retention=retention_, encoding=encoding_,
-            filter=lambda record: record["level"].no >= logger.level("DEBUG").no)
-
-# info
-logger.add(folder_ + prefix_ + "info.log", level="INFO", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=False,
-            rotation=rotation_, retention=retention_, encoding=encoding_,
-            filter=lambda record: record["level"].no >= logger.level("INFO").no)
-
-# warning
-logger.add(folder_ + prefix_ + "warning.log", level="WARNING", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=False,
-            rotation=rotation_, retention=retention_, encoding=encoding_,
-            filter=lambda record: record["level"].no >= logger.level("WARNING").no)
-
-# error
-logger.add(folder_ + prefix_ + "error.log", level="ERROR", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=False,
-            rotation=rotation_, retention=retention_, encoding=encoding_,
-            filter=lambda record: record["level"].no >= logger.level("ERROR").no)
-
-# critical
-logger.add(folder_ + prefix_ + "critical.log", level="CRITICAL", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=False,
-            rotation=rotation_, retention=retention_, encoding=encoding_,
-            filter=lambda record: record["level"].no >= logger.level("CRITICAL").no)
-
-logger.add(sys.stderr, level="CRITICAL", backtrace=backtrace_, diagnose=diagnose_,
-            format=format_, colorize=True,
-            filter=lambda record: record["level"].no >= logger.level("CRITICAL").no)
-
-logger.add(sys.stdout, level="INFO", backtrace=backtrace_, diagnose=diagnose_)
+# 初始化日志系统
+setup_msidat_logger()
