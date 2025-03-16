@@ -1,7 +1,7 @@
 import sys
 import os
 from pathlib import Path
-
+import json
 # 设置模块搜索路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                            QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox,
                            QTextEdit, QComboBox, QGroupBox, QFormLayout,
-                           QTabWidget)
+                           QTabWidget,QListWidget,QListWidgetItem)
 from PyQt5.QtCore import Qt
 import pandas as pd
 
@@ -554,7 +554,7 @@ class MolarMassTab(QWidget):
         elements_layout = QHBoxLayout()
         self.elements_path = QLineEdit()
         self.elements_path.setMinimumHeight(35)  # 增加输入框高度
-        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '_internal','database', 'elements_mass.json')
+        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
         self.elements_path.setText(default_path)
         elements_btn = QPushButton('Browse...')
         elements_btn.setMinimumSize(120, 35)  # 增加按钮尺寸
@@ -562,6 +562,46 @@ class MolarMassTab(QWidget):
         elements_layout.addWidget(self.elements_path)
         elements_layout.addWidget(elements_btn)
         settings_layout.addRow('Elements Mass File:', elements_layout)
+
+        # adduct type file selection
+        adduct_file_layout = QHBoxLayout()
+        self.adduct_path = QLineEdit()
+        self.adduct_path.setMinimumHeight(35)
+        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
+        self.adduct_path.setText(default_path)
+        adduct_btn = QPushButton('Browse...')
+        adduct_btn.setMinimumSize(120, 35)
+        adduct_btn.clicked.connect(lambda: self.browse_file(self.adduct_path, self.update_adduct_type))
+        adduct_file_layout.addWidget(self.adduct_path)
+        adduct_file_layout.addWidget(adduct_btn)
+        settings_layout.addRow('Adduct Type File:', adduct_file_layout)
+
+        # adduct type selection
+        adduct_layout = QHBoxLayout()
+
+        # 创建正离子下拉可复选控件
+        positive_label = QLabel('Positive Adduct:')
+        positive_label.setFixedWidth(230)
+        adduct_layout.addWidget(positive_label)
+        self.positive_list = QListWidget()
+        self.positive_list.setMinimumHeight(35)
+        self.positive_list.setSelectionMode(QListWidget.MultiSelection)
+        adduct_layout.addWidget(self.positive_list)
+
+        # 创建负离子下拉可复选控件
+        negative_label = QLabel('Negative Adduct:')
+        negative_label.setFixedWidth(230)
+        adduct_layout.addWidget(negative_label)
+        self.negative_list = QListWidget()
+        self.negative_list.setMinimumHeight(35)
+        self.negative_list.setSelectionMode(QListWidget.MultiSelection)
+        adduct_layout.addWidget(self.negative_list)
+
+        if os.path.exists(self.adduct_path.text()):
+            self.update_adduct_type()
+
+        # 将布局添加到主布局中
+        settings_layout.addRow(adduct_layout)  # 确保 layout 是主布局
         
         # Input file selection
         input_layout = QHBoxLayout()
@@ -605,6 +645,28 @@ class MolarMassTab(QWidget):
         run_btn.clicked.connect(self.run_calculation)
         layout.addWidget(run_btn)
         layout.addStretch()
+
+    def update_adduct_type(self):
+        """Update adduct type selection dropdown"""
+        adduct_type_file = self.adduct_path.text()
+        if not os.path.exists(adduct_type_file):
+            # 弹窗警告
+            QMessageBox.warning(self, "Warning", "Adduct type file not found. Please select a valid file.")
+            return
+        else:
+            adduct_type_df = json.load(open(adduct_type_file, 'r'))
+            if ('positve' in adduct_type_df) and ('negative' in adduct_type_df):
+                self.positive_list.clear()
+                self.positive_list.addItems(adduct_type_df['positve'].keys())
+                for index in range(self.positive_list.count()):
+                    self.positive_list.item(index).setSelected(True)    
+                self.negative_list.clear()
+                self.negative_list.addItems(adduct_type_df['negative'].keys())
+                for index in range(self.negative_list.count()):
+                    self.negative_list.item(index).setSelected(True)
+            else:
+                QMessageBox.warning(self, "Warning", "Adduct type file format is incorrect. Please select a valid file with 'positve' and 'negative' keys.")
+                return
 
     def update_input_columns(self):
         """Update input file column selection dropdown"""
@@ -653,7 +715,9 @@ class MolarMassTab(QWidget):
             self.calculator.output_file = output_path
             self.calculator.elements_mass_file = elements_path
             self.calculator.compounds_col = formula_column
-            self.calculator.process_file()
+            positive_selected_text = [self.positive_list.item(i).text() for i in range(self.positive_list.count()) if self.positive_list.item(i).isSelected()]
+            negative_selected_text = [self.negative_list.item(i).text() for i in range(self.negative_list.count()) if self.negative_list.item(i).isSelected()]
+            self.calculator.process_file(positive_list=positive_selected_text, negative_list=negative_selected_text, all=False)
             
             # Show success message
             QMessageBox.information(self, 'Success', 'Calculation completed. Results have been saved to the specified file.')

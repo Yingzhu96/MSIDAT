@@ -9,6 +9,8 @@ class MolarMassCalculator(object):
     def __init__(self, input_file=None, output_file=None, compounds_col='Formula', input_sheet=0):
         self._elements_mass_file = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
+        self._adduct_type_file = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
         self._input_file = input_file
         self._input_sheet = input_sheet
         self._output_file = output_file
@@ -79,32 +81,55 @@ class MolarMassCalculator(object):
         # logger.info(ele_group)
         return ele_group
 
-    def process_file(self):
+    def process_file(self, positive_list=None, negative_list=None, all=True):
+        logger.info('Start processing file')
         df = pd.read_excel(self._input_file,engine='openpyxl',sheet_name=self._input_sheet)
         compounds_series = df.loc[:,self._compounds_col]
         result = np.array([self.cal_molar_mass(v) for v in compounds_series])
-        df.insert(2, 'Monoisotopic Molecular Weight', result)
-        df.insert(3, 'ID', df.index + 1)
+        index = df.shape[1]
+        df.insert(index, 'Monoisotopic Molecular Weight', result)
+        df.insert(index+1, 'ID', df.index + 1)
         df2 = df.copy()
 
-        df.insert(4, '[M+H]+', result+1.0072766)
-        df.insert(5, '[M+Na]+', result+22.9892213)
-        df.insert(6, '[M+K]+', result+38.9631585)
-        df.insert(7, '[M+NH4]+', result+18.0338257)
-        df.insert(8, '[M+H-H2O]+', result+17.0032880)
-        df.insert(9, '[M]+', result-0.0005484)
+        adduct_set = json.load(open(self._adduct_type_file, 'r'))
+        adduct_set_positive = adduct_set['positve']
+        adduct_set_negative = adduct_set['negative']
+        if all:
+            positive_list = adduct_set_positive.keys()
+            negative_list = adduct_set_negative.keys()
+
+        logger.info(f"Positive list: {positive_list}")
+        logger.info(f"Negative list: {negative_list}")
+
+        for adduct, idx in zip(positive_list, range(index+2, index+2+len(positive_list))):
+            df.insert(idx, '[%s]+' %adduct, result+adduct_set_positive[adduct])
         df.round(5)
 
-        df2.insert(4, '[M-H]-', result-1.0072766)
-        df2.insert(5, '[M+Cl]-', result+34.9694011)
-        df2.insert(6, '[M-H-H2O]-', result-19.0178413)
-        df2.insert(7, '[M+CH3COO]-', result+59.0138527)
-        df2.insert(8, '[M+HCOO]-', result+44.9982026)
+        for adduct, idx in zip(negative_list, range(index+2, index+2+len(negative_list))):
+            df2.insert(idx, '[%s]-' %adduct, result+adduct_set_negative[adduct])
         df2.round(5)
 
+
+        # df.insert(4, '[M+H]+', result+1.0072766)
+        # df.insert(5, '[M+Na]+', result+22.9892213)
+        # df.insert(6, '[M+K]+', result+38.9631585)
+        # df.insert(7, '[M+NH4]+', result+18.0338257)
+        # df.insert(8, '[M+H-H2O]+', result+17.0032880)
+        # df.insert(9, '[M]+', result-0.0005484)
+        # df.round(5)
+
+        # df2.insert(4, '[M-H]-', result-1.0072766)
+        # df2.insert(5, '[M+Cl]-', result+34.9694011)
+        # df2.insert(6, '[M-H-H2O]-', result-19.0178413)
+        # df2.insert(7, '[M+CH3COO]-', result+59.0138527)
+        # df2.insert(8, '[M+HCOO]-', result+44.9982026)
+        # df2.round(5)
+
         with pd.ExcelWriter(self._output_file) as writer:
-            df.to_excel(writer, sheet_name='positive',index=False)
-            df2.to_excel(writer, sheet_name='negative',index=False)
+            if positive_list:
+                df.to_excel(writer, sheet_name='positive',index=False)
+            if negative_list:
+                df2.to_excel(writer, sheet_name='negative',index=False)
         logger.info('Molar mass calculation completed, total %d rows processed' %len(df))
         logger.info('Output file: %s' %self._output_file)
         
@@ -115,6 +140,12 @@ class MolarMassCalculator(object):
     @elements_mass_file.setter
     def elements_mass_file(self, value):
         self._elements_mass_file = value
+    @property
+    def adduct_type_file(self):
+        return self._adduct_type_file
+    @adduct_type_file.setter
+    def adduct_type_file(self, value):
+        self._adduct_type_file = value
     @property
     def input_file(self):
         return self._input_file
