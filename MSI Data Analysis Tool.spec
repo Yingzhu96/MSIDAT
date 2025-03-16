@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='MSI Data Analysis Tool',
+    name='MSI Data Analysis Tool V1.1',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

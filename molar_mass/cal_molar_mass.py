@@ -6,11 +6,17 @@ import re
 from loguru import logger
 
 class MolarMassCalculator(object):
-    def __init__(self, input_file=None, output_file=None, compounds_col='Formula', input_sheet=0):
-        self._elements_mass_file = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
-        self._adduct_type_file = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
+    def __init__(self, input_file=None, output_file=None, compounds_col='Formula', 
+                 input_sheet=0, elements_mass_file=None, adduct_type_file=None):
+        # self._elements_mass_file = os.path.join(
+        #     os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
+        # self._adduct_type_file = os.path.join(
+        #     os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
+        self._elements_mass_file = elements_mass_file
+        self._ele_mass = {}
+        if self._elements_mass_file:
+            self.get_ele_mass()
+        self._adduct_type_file = adduct_type_file
         self._input_file = input_file
         self._input_sheet = input_sheet
         self._output_file = output_file
@@ -27,8 +33,9 @@ class MolarMassCalculator(object):
             4. electrons mass is considered in ions
         return: float
         '''
-        ele_mass = json.load(open(self._elements_mass_file, 'r'))['ele_mass']
         # 去除[]
+        if not self._ele_mass:
+            raise ValueError('Elements mass not found. Please select a valid file.')
         compounds_str = compounds_str.strip('[]')
         compounds_list = compounds_str.replace(',', ' ').replace(';', ' ').split(' ')
         logger.debug('compound list: %s' %compounds_list)
@@ -41,17 +48,17 @@ class MolarMassCalculator(object):
         for item in ele_list:
             _cnt = int(item[1]) if item[1] else 1
             # logger.info(item)
-            if item[0] not in ele_mass.keys():
+            if item[0] not in self._ele_mass.keys():
                 raise ValueError('Invalid element: ' + item[0])
                 return -1
             if 'e' in item[2]:
-                molar_mass += ele_mass[item[2]] * _cnt
+                molar_mass += self._ele_mass[item[2]] * _cnt
             else:
                 if (item[2] == '+') | (item[2] == '-'):
-                    molar_mass += ele_mass[item[0]]
-                    molar_mass += ele_mass['e'+item[2]] * _cnt
+                    molar_mass += self._ele_mass[item[0]]
+                    molar_mass += self._ele_mass['e'+item[2]] * _cnt
                 else:
-                    molar_mass += ele_mass[item[0]] * _cnt
+                    molar_mass += self._ele_mass[item[0]] * _cnt
         return molar_mass
     
     def compound_split(self, compound_str):
@@ -133,6 +140,15 @@ class MolarMassCalculator(object):
         logger.info('Molar mass calculation completed, total %d rows processed' %len(df))
         logger.info('Output file: %s' %self._output_file)
         
+    def get_ele_mass(self):
+        if not os.path.exists(self._elements_mass_file):
+            raise ValueError('Elements mass file not found. Please select a valid file.')
+        else:
+            try:    
+                self._ele_mass = json.load(open(self._elements_mass_file, 'r'))['ele_mass']
+                logger.info(f"ele_mass: {self._ele_mass}")
+            except Exception as e:
+                raise ValueError('Elements mass file format is incorrect. Please select a valid file.')
 
     @property
     def elements_mass_file(self):
@@ -140,6 +156,9 @@ class MolarMassCalculator(object):
     @elements_mass_file.setter
     def elements_mass_file(self, value):
         self._elements_mass_file = value
+        logger.info(f"elements_mass_file: {self._elements_mass_file}") 
+        self.get_ele_mass()
+
     @property
     def adduct_type_file(self):
         return self._adduct_type_file

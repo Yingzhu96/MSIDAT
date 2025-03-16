@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
         app.setFont(font)
         
     def initUI(self):
-        self.setWindowTitle('Mass Spectrometry Data Analysis Tool v1.0')
+        self.setWindowTitle('MSI Data Analysis Tool v1.1')
         self.setGeometry(100, 100, 1400, 900)  # 增加窗口尺寸
         
         # Create central widget and tab widget
@@ -455,10 +455,10 @@ class CompoundMatchTab(QWidget):
                 
     def browse_save_file(self, line_edit):
         file_name, _ = QFileDialog.getSaveFileName(
-            self, 'Save File', '', 'Excel Files (*.xlsx);;All Files (*)'
+            self, 'Save File', '', 'Excel Files (*.xlsx *.xls);;All Files (*)'
         )
         if file_name:
-            if not file_name.endswith('.xlsx'):
+            if not file_name.endswith('.xlsx') and not file_name.endswith('.xls'):
                 file_name += '.xlsx'
             line_edit.setText(file_name)
             
@@ -554,8 +554,8 @@ class MolarMassTab(QWidget):
         elements_layout = QHBoxLayout()
         self.elements_path = QLineEdit()
         self.elements_path.setMinimumHeight(35)  # 增加输入框高度
-        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
-        self.elements_path.setText(default_path)
+        # default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
+        # self.elements_path.setText(default_path)
         elements_btn = QPushButton('Browse...')
         elements_btn.setMinimumSize(120, 35)  # 增加按钮尺寸
         elements_btn.clicked.connect(lambda: self.browse_file(self.elements_path))
@@ -567,8 +567,8 @@ class MolarMassTab(QWidget):
         adduct_file_layout = QHBoxLayout()
         self.adduct_path = QLineEdit()
         self.adduct_path.setMinimumHeight(35)
-        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
-        self.adduct_path.setText(default_path)
+        # default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'adduct_type.json')
+        # self.adduct_path.setText(default_path)
         adduct_btn = QPushButton('Browse...')
         adduct_btn.setMinimumSize(120, 35)
         adduct_btn.clicked.connect(lambda: self.browse_file(self.adduct_path, self.update_adduct_type))
@@ -648,13 +648,13 @@ class MolarMassTab(QWidget):
 
     def update_adduct_type(self):
         """Update adduct type selection dropdown"""
-        adduct_type_file = self.adduct_path.text()
-        if not os.path.exists(adduct_type_file):
+        self.calculator.adduct_type_file = self.adduct_path.text()
+        if not os.path.exists(self.calculator.adduct_type_file):
             # 弹窗警告
             QMessageBox.warning(self, "Warning", "Adduct type file not found. Please select a valid file.")
             return
         else:
-            adduct_type_df = json.load(open(adduct_type_file, 'r'))
+            adduct_type_df = json.load(open(self.calculator.adduct_type_file, 'r'))
             if ('positve' in adduct_type_df) and ('negative' in adduct_type_df):
                 self.positive_list.clear()
                 self.positive_list.addItems(adduct_type_df['positve'].keys())
@@ -683,7 +683,7 @@ class MolarMassTab(QWidget):
             
     def browse_file(self, line_edit, callback=None):
         file_name, _ = QFileDialog.getOpenFileName(
-            self, 'Select File', '', 'Excel Files (*.xlsx *.xls);;All Files (*)'
+            self, 'Select File', '', 'Excel Files (*.xlsx *.xls *.json);;All Files (*)'
         )
         if file_name:
             line_edit.setText(file_name)
@@ -692,10 +692,10 @@ class MolarMassTab(QWidget):
             
     def browse_save_file(self, line_edit):
         file_name, _ = QFileDialog.getSaveFileName(
-            self, 'Save File', '', 'Excel Files (*.xlsx);;All Files (*)'
+            self, 'Save File', '', 'Excel Files (*.xlsx *.xls);;All Files (*)'
         )
         if file_name:
-            if not file_name.endswith('.xlsx'):
+            if not file_name.endswith('.xlsx') and not file_name.endswith('.xls'):
                 file_name += '.xlsx'
             line_edit.setText(file_name)
             
@@ -878,10 +878,10 @@ class AnnotatorTab(QWidget):
             self,
             "Save File",
             "",
-            "Excel Files (*.xlsx);;All Files (*.*)"
+            "Excel Files (*.xlsx *.xls);;All Files (*.*)"
         )
         if file_name:
-            if not file_name.endswith('.xlsx'):
+            if not file_name.endswith('.xlsx') and not file_name.endswith('.xls'):
                 file_name += '.xlsx'
             line_edit.setText(file_name)
             
