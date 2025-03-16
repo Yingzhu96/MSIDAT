@@ -30,8 +30,8 @@ class QTextEditLogger:
         self.widget = widget
 
     def write(self, message):
-        if self.widget and self.widget.isVisible():
-            self.widget.append(message.strip())
+        # if self.widget and self.widget.isVisible():
+        self.widget.append(message.strip())
 
 
 class MainWindow(QMainWindow):
@@ -417,7 +417,7 @@ class CompoundMatchTab(QWidget):
     def update_source_columns(self):
         """Update source data column selection dropdowns"""
         try:
-            df = pd.read_excel(self.source_path.text())
+            df = pd.read_excel(self.source_path.text(),engine='openpyxl')
             self.source_mz_combo.clear()
             self.source_intensity_combo.clear()
             self.source_mz_combo.addItems(df.columns)
@@ -434,7 +434,7 @@ class CompoundMatchTab(QWidget):
     def update_target_columns(self):
         """Update target data column selection dropdown"""
         try:
-            df = pd.read_excel(self.target_path.text())
+            df = pd.read_excel(self.target_path.text(),engine='openpyxl')
             self.target_mz_combo.clear()
             self.target_mz_combo.addItems(df.columns)
             
@@ -474,9 +474,9 @@ class CompoundMatchTab(QWidget):
                 
             # Read data
             logger.info("Reading source file...")
-            df_source = pd.read_excel(source_path)
+            df_source = pd.read_excel(source_path,engine='openpyxl')
             logger.info("Reading target file...")
-            df_target = pd.read_excel(target_path)
+            df_target = pd.read_excel(target_path,engine='openpyxl')
             
             # Set parameters
             self.compound_match.df_source = df_source
@@ -501,16 +501,16 @@ class CompoundMatchTab(QWidget):
             self.min_error_label.setText(f"{self.compound_match.min_rel_error:.2f}")
             self.std_error_label.setText(f"{self.compound_match.std_rel_error:.2f}")
             
-            # Save results
-            logger.info("Saving results...")
-            self.compound_match.output_process()
-            
             # Log statistics
             logger.info("Matching completed!")
             logger.info(f"Average relative error: {self.compound_match.avg_rel_error:.2f} ppm")
             logger.info(f"Maximum relative error: {self.compound_match.max_rel_error:.2f} ppm")
             logger.info(f"Minimum relative error: {self.compound_match.min_rel_error:.2f} ppm")
             logger.info(f"Standard deviation: {self.compound_match.std_rel_error:.2f} ppm")
+            
+            # Save results
+            logger.info("Saving results...")
+            self.compound_match.output_process()
             
             # Show success message
             QMessageBox.information(self, 'Success', 'Matching completed. Results have been saved to the specified file.')
@@ -554,7 +554,7 @@ class MolarMassTab(QWidget):
         elements_layout = QHBoxLayout()
         self.elements_path = QLineEdit()
         self.elements_path.setMinimumHeight(35)  # 增加输入框高度
-        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'elements_mass.json')
+        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '_internal','database', 'elements_mass.json')
         self.elements_path.setText(default_path)
         elements_btn = QPushButton('Browse...')
         elements_btn.setMinimumSize(120, 35)  # 增加按钮尺寸
@@ -609,7 +609,7 @@ class MolarMassTab(QWidget):
     def update_input_columns(self):
         """Update input file column selection dropdown"""
         try:
-            df = pd.read_excel(self.input_path.text())
+            df = pd.read_excel(self.input_path.text(),engine='openpyxl')
             self.column_combo.clear()
             self.column_combo.addItems(df.columns)
             

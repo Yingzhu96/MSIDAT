@@ -29,12 +29,12 @@ class MolarMassCalculator(object):
         # 去除[]
         compounds_str = compounds_str.strip('[]')
         compounds_list = compounds_str.replace(',', ' ').replace(';', ' ').split(' ')
-        logger.info('compound list: %s' %compounds_list)
+        logger.debug('compound list: %s' %compounds_list)
         ele_list = []
         for compound in compounds_list:
             for item in self.compound_split(compound):
                 ele_list.append(item)
-        logger.info('element list: %s' %ele_list)
+        logger.debug('element list: %s' %ele_list)
         molar_mass = 0
         for item in ele_list:
             _cnt = int(item[1]) if item[1] else 1
@@ -80,7 +80,7 @@ class MolarMassCalculator(object):
         return ele_group
 
     def process_file(self):
-        df = pd.read_excel(self._input_file,sheet_name=self._input_sheet)
+        df = pd.read_excel(self._input_file,engine='openpyxl',sheet_name=self._input_sheet)
         compounds_series = df.loc[:,self._compounds_col]
         result = np.array([self.cal_molar_mass(v) for v in compounds_series])
         df.insert(2, 'Monoisotopic Molecular Weight', result)
@@ -105,6 +105,8 @@ class MolarMassCalculator(object):
         with pd.ExcelWriter(self._output_file) as writer:
             df.to_excel(writer, sheet_name='positive',index=False)
             df2.to_excel(writer, sheet_name='negative',index=False)
+        logger.info('Molar mass calculation completed, total %d rows processed' %len(df))
+        logger.info('Output file: %s' %self._output_file)
         
 
     @property

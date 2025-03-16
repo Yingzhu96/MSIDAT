@@ -14,8 +14,8 @@ class Annotator(object):
         self.low_limit_ppm = low_limit_ppm
     
     def make_annotator(self):
-        self.data_base = pd.read_excel(self.database_path,sheet_name=self.database_sheet)
-        self.msi_data = pd.read_excel(self.msidata_path,sheet_name=self.msidata_sheet)
+        self.data_base = pd.read_excel(self.database_path,engine='openpyxl',sheet_name=self.database_sheet)
+        self.msi_data = pd.read_excel(self.msidata_path,engine='openpyxl',sheet_name=self.msidata_sheet)
 
         base_row, base_col = self.data_base.shape
         msi_row, msi_col = self.msi_data.shape
