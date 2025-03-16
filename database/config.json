@@ -1,0 +1,24 @@
+{
+    "MolarMassCalculator": {
+        "Elements Mass File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\database\\elements_mass.json",
+        "Adduct Type File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\database\\adduct_type.json",
+        "Input File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\Table S2 Database.xlsx",
+        "Output File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\output_mz2.xlsx"
+    },
+    "CompoundMatch": {
+        "Source File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\数据提取-原始.xlsx",
+        "Target File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\修正-Table S4 内标校正离子-0226.xlsx",
+        "Output File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\MSDatabase_new.xlsx",
+        "Output m/z Column": "measured m/z",
+        "Output Relative Error Column": "Relative error(ppm)",
+        "Intensity Threshold": 1000,
+        "m/z Tolerance (ppm)": 10
+    },
+    "Annotator": {
+        "MSI Data File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\MSIdata.xlsx",
+        "Database File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\MSDatabase.xlsx",
+        "Output File": "C:\\Users\\jlp10\\Desktop\\zhuying\\python\\msidat\\userdata\\MSIdata_annotator.xlsx",
+        "Up Limit (ppm)": 10,
+        "Low Limit (ppm)": -10
+    }
+}

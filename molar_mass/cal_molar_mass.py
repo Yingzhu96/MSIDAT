@@ -67,7 +67,6 @@ class MolarMassCalculator(object):
         Input: string
         return: list
         '''
-        # ele_mass = json.load(open(self._elements_mass_file,'r'))
         # 识别()内容
         ele_group_pare = re.findall(r'\(([^()]+)\)(\d*)([+-]?)',compound_str) 
         # logger.info(ele_group_pare)
@@ -98,7 +97,7 @@ class MolarMassCalculator(object):
         df.insert(index+1, 'ID', df.index + 1)
         df2 = df.copy()
 
-        adduct_set = json.load(open(self._adduct_type_file, 'r'))
+        adduct_set = json.load(open(self._adduct_type_file, 'r', encoding='utf-8'))
         adduct_set_positive = adduct_set['positve']
         adduct_set_negative = adduct_set['negative']
         if all:
@@ -145,7 +144,7 @@ class MolarMassCalculator(object):
             raise ValueError('Elements mass file not found. Please select a valid file.')
         else:
             try:    
-                self._ele_mass = json.load(open(self._elements_mass_file, 'r'))['ele_mass']
+                self._ele_mass = json.load(open(self._elements_mass_file, 'r', encoding='utf-8'))['ele_mass']
                 logger.info(f"ele_mass: {self._ele_mass}")
             except Exception as e:
                 raise ValueError('Elements mass file format is incorrect. Please select a valid file.')

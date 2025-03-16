@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setSpacing(15)  # 增加布局间距
-        
+
         # Create tab widget
         tab_widget = QTabWidget()
         tab_widget.setStyleSheet("""
@@ -78,22 +78,38 @@ class MainWindow(QMainWindow):
         """)
         
         # Create molar mass calculator tab
-        molar_mass_tab = MolarMassTab(self.mol_calculator)
-        tab_widget.addTab(molar_mass_tab, "Molar Mass Calculator")
+        self.molar_mass_tab = MolarMassTab(self.mol_calculator)
+        tab_widget.addTab(self.molar_mass_tab, "Molar Mass Calculator")
         
         # Create compound match tab
-        compound_match_tab = CompoundMatchTab(self.compound_match)
-        tab_widget.addTab(compound_match_tab, "Compound Match")
+        self.compound_match_tab = CompoundMatchTab(self.compound_match)
+        tab_widget.addTab(self.compound_match_tab, "Compound Match")
         
         # Create annotator tab
-        annotator_tab = AnnotatorTab(self.annotator)
-        tab_widget.addTab(annotator_tab, "Annotator")
+        self.annotator_tab = AnnotatorTab(self.annotator)
+        tab_widget.addTab(self.annotator_tab, "Annotator")
         
         # Create log tab
-        log_tab = LogTab()
-        tab_widget.addTab(log_tab, "Log")
+        self.log_tab = LogTab()
+        tab_widget.addTab(self.log_tab, "Log")
         
         layout.addWidget(tab_widget)
+
+        # config file selection
+        config_file_layout = QHBoxLayout()
+        # 添加标签
+        config_label = QLabel('Global Config File (Optional):')
+        config_label.setFixedWidth(300)  # 设置标签的固定宽度
+        config_file_layout.addWidget(config_label)
+
+        self.config_file = QLineEdit()
+        self.config_file.setMinimumHeight(35)
+        config_btn = QPushButton('Browse...')
+        config_btn.setMinimumSize(120, 35)
+        config_btn.clicked.connect(lambda: self.browse_file(self.config_file, self.update_config))
+        config_file_layout.addWidget(self.config_file)
+        config_file_layout.addWidget(config_btn)
+        layout.addLayout(config_file_layout)
         
         # Add developer info at the bottom
         info_label = QLabel("Developed by 朱颖 & 贾历平 | 2025.3.16")
@@ -106,7 +122,87 @@ class MainWindow(QMainWindow):
         """)
         info_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(info_label)
+    
+    def browse_file(self, line_edit, callback=None):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, 'Open File', '', 'Excel Files (*.xlsx *.xls *.json);;All Files (*)'
+        )
+        if file_name:
+            line_edit.setText(file_name)
+            if callback:
+                callback()
 
+    def update_config(self):
+        if not os.path.exists(self.config_file.text()):
+            QMessageBox.warning(self, "Warning", "Config file not found. Please select a valid file.")
+            return
+        else:
+            logger.info(f"config from {self.config_file.text()} ...")
+            self.config_dict = json.load(open(self.config_file.text(), 'r', encoding='utf-8'))
+            if 'MolarMassCalculator' in self.config_dict.keys():
+                temp_dict = self.config_dict['MolarMassCalculator']
+                if 'Elements Mass File' in temp_dict.keys():
+                    self.molar_mass_tab.elements_path.setText(os.path.abspath(temp_dict['Elements Mass File']))
+                    logger.info(f"set elements mass file to {os.path.abspath(temp_dict['Elements Mass File'])}")
+                if 'Adduct Type File' in temp_dict.keys():
+                    self.molar_mass_tab.adduct_path.setText(os.path.abspath(temp_dict['Adduct Type File']))
+                    logger.info(f"set adduct type file to {os.path.abspath(temp_dict['Adduct Type File'])}")
+                    self.molar_mass_tab.update_adduct_type()
+                if 'Input File' in temp_dict.keys():
+                    self.molar_mass_tab.input_path.setText(os.path.abspath(temp_dict['Input File']))
+                    logger.info(f"set input file to {os.path.abspath(temp_dict['Input File'])}")
+                    self.molar_mass_tab.update_input_columns()
+                if 'Output File' in temp_dict.keys():
+                    self.molar_mass_tab.output_path.setText(os.path.abspath(temp_dict['Output File']))
+                    logger.info(f"set output file to {os.path.abspath(temp_dict['Output File'])}")
+            if 'CompoundMatch' in self.config_dict.keys():
+                temp_dict = self.config_dict['CompoundMatch']
+                if 'Source File' in temp_dict.keys():
+                    self.compound_match_tab.source_path.setText(os.path.abspath(temp_dict['Source File']))
+                    logger.info(f"set source file to {os.path.abspath(temp_dict['Source File'])}")
+                    self.compound_match_tab.update_source_columns()
+                if 'Target File' in temp_dict.keys():
+                    self.compound_match_tab.target_path.setText(os.path.abspath(temp_dict['Target File']))
+                    logger.info(f"set target file to {os.path.abspath(temp_dict['Target File'])}")
+                    self.compound_match_tab.update_target_columns()
+                if 'Output File' in temp_dict.keys():
+                    self.compound_match_tab.output_path.setText(os.path.abspath(temp_dict['Output File']))
+                    logger.info(f"set output file to {os.path.abspath(temp_dict['Output File'])}")
+                if 'Output m/z Column' in temp_dict.keys():
+                    self.compound_match_tab.output_mz.setText(temp_dict['Output m/z Column'])
+                    logger.info(f"set output m/z column to {temp_dict['Output m/z Column']}")
+                if 'Output Relative Error Column' in temp_dict.keys():
+                    self.compound_match_tab.output_rel_error.setText(temp_dict['Output Relative Error Column'])
+                    logger.info(f"set output relative error column to {temp_dict['Output Relative Error Column']}")
+                if 'Output Intensity Column' in temp_dict.keys():
+                    self.compound_match_tab.output_intensity.setText(temp_dict['Output Intensity Column'])
+                    logger.info(f"set output intensity column to {temp_dict['Output Intensity Column']}")
+                if 'Intensity Threshold' in temp_dict.keys():
+                    self.compound_match_tab.intensity_spin.setValue(temp_dict['Intensity Threshold'])
+                    logger.info(f"set intensity threshold to {temp_dict['Intensity Threshold']}")
+                if 'm/z Tolerance (ppm)' in temp_dict.keys():
+                    self.compound_match_tab.tolerance_spin.setValue(temp_dict['m/z Tolerance (ppm)'])
+                    logger.info(f"set m/z tolerance to {temp_dict['m/z Tolerance (ppm)']}")
+                    
+            if 'Annotator' in self.config_dict.keys():
+                temp_dict = self.config_dict['Annotator']
+                if 'MSI Data File' in temp_dict.keys():
+                    self.annotator_tab.msi_path.setText(os.path.abspath(temp_dict['MSI Data File']))
+                    logger.info(f"set msi data file to {os.path.abspath(temp_dict['MSI Data File'])}")
+                    self.annotator_tab.update_msi_sheets()
+                if 'Database File' in temp_dict.keys():
+                    self.annotator_tab.database_path.setText(os.path.abspath(temp_dict['Database File']))
+                    logger.info(f"set database file to {os.path.abspath(temp_dict['Database File'])}")
+                    self.annotator_tab.update_database_sheets()
+                if 'Output File' in temp_dict.keys():
+                    self.annotator_tab.output_path.setText(os.path.abspath(temp_dict['Output File']))
+                    logger.info(f"set output file to {os.path.abspath(temp_dict['Output File'])}")
+                if 'Up Limit (ppm)' in temp_dict.keys():
+                    self.annotator_tab.up_limit_ppm.setValue(temp_dict['Up Limit (ppm)'])
+                    logger.info(f"set up limit to {temp_dict['Up Limit (ppm)']}")
+                if 'Low Limit (ppm)' in temp_dict.keys():
+                    self.annotator_tab.low_limit_ppm.setValue(temp_dict['Low Limit (ppm)'])
+                    logger.info(f"set low limit to {temp_dict['Low Limit (ppm)']}")
 class LogTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -654,7 +750,7 @@ class MolarMassTab(QWidget):
             QMessageBox.warning(self, "Warning", "Adduct type file not found. Please select a valid file.")
             return
         else:
-            adduct_type_df = json.load(open(self.calculator.adduct_type_file, 'r'))
+            adduct_type_df = json.load(open(self.calculator.adduct_type_file, 'r', encoding='utf-8'))
             if ('positve' in adduct_type_df) and ('negative' in adduct_type_df):
                 self.positive_list.clear()
                 self.positive_list.addItems(adduct_type_df['positve'].keys())
