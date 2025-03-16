@@ -30,27 +30,9 @@ class QTextEditLogger:
         self.widget = widget
 
     def write(self, message):
-        if self.widget and not self.widget.isDestroyed():
+        if self.widget and self.widget.isVisible():
             self.widget.append(message.strip())
 
-def setup_global_logger():
-    """Setup global logger configuration"""
-    try:
-        # 移除所有已存在的处理器
-        logger.configure(handlers=[], extra={})
-        
-        # 添加默认的控制台输出（仅在开发环境中）
-        if getattr(sys, 'frozen', False):
-            # 在打包环境中不添加控制台输出
-            pass
-        else:
-            logger.add(sys.stderr, level="INFO")
-            
-    except Exception as e:
-        print(f"全局日志系统初始化失败: {str(e)}")
-
-# 初始化全局logger配置
-setup_global_logger()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -160,6 +142,20 @@ class LogTab(QWidget):
         
     def setup_logger(self):
         """Setup loguru logger handlers for GUI"""
+        try:
+            # 移除所有已存在的处理器
+            logger.configure(handlers=[], extra={})
+            
+            # 添加默认的控制台输出（仅在开发环境中）
+            if getattr(sys, 'frozen', False):
+                # 在打包环境中不添加控制台输出
+                pass
+            else:
+                logger.add(sys.stderr, level="INFO")
+                logger.info("GUI logger reset successfully")
+                
+        except Exception as e:
+            print(f"GUI logger reset failed: {str(e)}")
         try:
             # 添加GUI输出处理器
             gui_handler_id = logger.add(
