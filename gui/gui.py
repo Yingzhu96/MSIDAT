@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QTabWidget,QListWidget,QListWidgetItem)
 from PyQt5.QtCore import Qt
 import pandas as pd
+from PyQt5.QtGui import QIcon
 
 # 导入自定义模块
 from msidat.match.compound_match import CompoundMatch
@@ -40,6 +41,19 @@ class MainWindow(QMainWindow):
         self.compound_match = CompoundMatch()
         self.mol_calculator = MolarMassCalculator()
         self.annotator = Annotator()
+        
+        # 设置应用程序图标
+        if getattr(sys, 'frozen', False):
+            # 在打包环境中
+            icon_path = os.path.join(os.path.dirname(sys.executable), 'app_icon.ico')
+        else:
+            # 在开发环境中
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resources', 'app_icon.ico')
+        
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            QApplication.instance().setWindowIcon(QIcon(icon_path))
+        
         self.setup_style()
         self.initUI()
         
@@ -191,7 +205,7 @@ class MainWindow(QMainWindow):
         config_file_layout = QHBoxLayout()
         # 添加标签
         config_label = QLabel('Global Config File (Optional):')
-        config_label.setFixedWidth(350)  # 设置标签的固定宽度
+        # config_label.setFixedWidth(350)  # 设置标签的固定宽度
         config_file_layout.addWidget(config_label)
 
         self.config_file = QLineEdit()
