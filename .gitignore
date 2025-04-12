@@ -1,4 +1,4 @@
-log/*
+log/
 userdata/*
 __pycache__/
 dist/

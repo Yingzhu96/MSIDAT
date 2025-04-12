@@ -46,14 +46,106 @@ class MainWindow(QMainWindow):
     def setup_style(self):
         """Set global application style"""
         app = QApplication.instance()
-        # 设置全局字体大小
+        
+        # 设置全局字体
         font = app.font()
-        font.setPointSize(12)  # 设置全局字体大小为12pt
+        font.setFamily("Microsoft YaHei")  # 使用微软雅黑字体
+        font.setPointSize(11)  # 设置全局字体大小为11pt
         app.setFont(font)
         
+        # 设置全局样式表
+        app.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f5f5;
+            }
+            QWidget {
+                background-color: #f5f5f5;
+            }
+            QPushButton {
+                background-color: #7aa7e2;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #6b96d1;
+            }
+            QPushButton:pressed {
+                background-color: #5c85c0;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 1px solid #7aa7e2;
+            }
+            QComboBox {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+            }
+            QComboBox:focus {
+                border: 1px solid #7aa7e2;
+            }
+            QSpinBox, QDoubleSpinBox {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+            }
+            QGroupBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-top: 10px;
+                padding-top: 15px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+            QTabWidget::pane {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                background-color: white;
+            }
+            QTabBar::tab {
+                background-color: #f0f0f0;
+                border: 1px solid #ddd;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                padding: 8px 20px;
+                min-width: 200px;
+            }
+            QTabBar::tab:selected {
+                background-color: white;
+                border-bottom-color: white;
+            }
+            QTabBar::tab:hover {
+                background-color: #e6e6e6;
+            }
+            QTextEdit {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                background-color: white;
+            }
+            QLabel {
+                color: #333333;
+            }
+        """)
+        
     def initUI(self):
-        self.setWindowTitle('MSI Data Analysis Tool v1.1')
-        self.setGeometry(100, 100, 1400, 900)  # 增加窗口尺寸
+        self.setWindowTitle('MSI Data Analysis Tool v1.1.1')
+        self.setGeometry(100, 100, 1600, 1200)  # 增加窗口尺寸
         
         # Create central widget and tab widget
         central_widget = QWidget()
@@ -79,15 +171,15 @@ class MainWindow(QMainWindow):
         
         # Create molar mass calculator tab
         self.molar_mass_tab = MolarMassTab(self.mol_calculator)
-        tab_widget.addTab(self.molar_mass_tab, "Molar Mass Calculator")
+        tab_widget.addTab(self.molar_mass_tab, "Database construction")
         
         # Create compound match tab
         self.compound_match_tab = CompoundMatchTab(self.compound_match)
-        tab_widget.addTab(self.compound_match_tab, "Compound Match")
+        tab_widget.addTab(self.compound_match_tab, "MS shift evaluation")
         
         # Create annotator tab
         self.annotator_tab = AnnotatorTab(self.annotator)
-        tab_widget.addTab(self.annotator_tab, "Annotator")
+        tab_widget.addTab(self.annotator_tab, "Annotation")
         
         # Create log tab
         self.log_tab = LogTab()
@@ -99,7 +191,7 @@ class MainWindow(QMainWindow):
         config_file_layout = QHBoxLayout()
         # 添加标签
         config_label = QLabel('Global Config File (Optional):')
-        config_label.setFixedWidth(300)  # 设置标签的固定宽度
+        config_label.setFixedWidth(350)  # 设置标签的固定宽度
         config_file_layout.addWidget(config_label)
 
         self.config_file = QLineEdit()
@@ -112,7 +204,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(config_file_layout)
         
         # Add developer info at the bottom
-        info_label = QLabel("Developed by 朱颖 & 贾历平 | 2025.3.16")
+        info_label = QLabel("Developed by 朱颖 & 贾历平 | 2025.4.12")
         info_label.setStyleSheet("""
             QLabel {
                 color: #666666;
@@ -499,7 +591,7 @@ class CompoundMatchTab(QWidget):
         layout.addWidget(two_column_widget)
         
         # Run button
-        run_btn = QPushButton('Run Matching')
+        run_btn = QPushButton('Run Evaluation')
         run_btn.setMinimumSize(300, 50)
         run_btn.setStyleSheet("""
             QPushButton {
@@ -645,7 +737,33 @@ class MolarMassTab(QWidget):
         settings_layout = QFormLayout()
         settings_layout.setSpacing(20)  # 增加表单项间距
         settings_layout.setContentsMargins(15, 15, 15, 15)  # 增加边距
+
+        # Input file selection
+        input_layout = QHBoxLayout()
+        self.input_path = QLineEdit()
+        self.input_path.setMinimumHeight(35)
+        input_btn = QPushButton('Browse...')
+        input_btn.setMinimumSize(120, 35)
+        input_btn.clicked.connect(lambda: self.browse_file(self.input_path, self.update_input_columns))
+        input_layout.addWidget(self.input_path)
+        input_layout.addWidget(input_btn)
+        settings_layout.addRow('Input File:', input_layout)
         
+        # Formula column selection
+        self.column_combo = QComboBox()
+        self.column_combo.setMinimumHeight(35)
+        settings_layout.addRow('Formula Column:', self.column_combo)
+        
+        # Output file selection
+        output_layout = QHBoxLayout()
+        self.output_path = QLineEdit()
+        self.output_path.setMinimumHeight(35)
+        output_btn = QPushButton('Browse...')
+        output_btn.setMinimumSize(120, 35)
+        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
+        output_layout.addWidget(self.output_path)
+        output_layout.addWidget(output_btn)
+        settings_layout.addRow('Output File:', output_layout)
         # Elements mass file selection
         elements_layout = QHBoxLayout()
         self.elements_path = QLineEdit()
@@ -674,24 +792,27 @@ class MolarMassTab(QWidget):
 
         # adduct type selection
         adduct_layout = QHBoxLayout()
+        adduct_layout.setSpacing(20)  # 设置水平间距
 
-        # 创建正离子下拉可复选控件
-        positive_label = QLabel('Positive Adduct:')
-        positive_label.setFixedWidth(230)
-        adduct_layout.addWidget(positive_label)
+        # 创建正离子选择区域
+        positive_group = QGroupBox("Positive Adduct")
+        positive_layout = QVBoxLayout()
         self.positive_list = QListWidget()
         self.positive_list.setMinimumHeight(35)
         self.positive_list.setSelectionMode(QListWidget.MultiSelection)
-        adduct_layout.addWidget(self.positive_list)
+        positive_layout.addWidget(self.positive_list)
+        positive_group.setLayout(positive_layout)
+        adduct_layout.addWidget(positive_group)
 
-        # 创建负离子下拉可复选控件
-        negative_label = QLabel('Negative Adduct:')
-        negative_label.setFixedWidth(230)
-        adduct_layout.addWidget(negative_label)
+        # 创建负离子选择区域
+        negative_group = QGroupBox("Negative Adduct")
+        negative_layout = QVBoxLayout()
         self.negative_list = QListWidget()
         self.negative_list.setMinimumHeight(35)
         self.negative_list.setSelectionMode(QListWidget.MultiSelection)
-        adduct_layout.addWidget(self.negative_list)
+        negative_layout.addWidget(self.negative_list)
+        negative_group.setLayout(negative_layout)
+        adduct_layout.addWidget(negative_group)
 
         if os.path.exists(self.adduct_path.text()):
             self.update_adduct_type()
@@ -699,38 +820,13 @@ class MolarMassTab(QWidget):
         # 将布局添加到主布局中
         settings_layout.addRow(adduct_layout)  # 确保 layout 是主布局
         
-        # Input file selection
-        input_layout = QHBoxLayout()
-        self.input_path = QLineEdit()
-        self.input_path.setMinimumHeight(35)
-        input_btn = QPushButton('Browse...')
-        input_btn.setMinimumSize(120, 35)
-        input_btn.clicked.connect(lambda: self.browse_file(self.input_path, self.update_input_columns))
-        input_layout.addWidget(self.input_path)
-        input_layout.addWidget(input_btn)
-        settings_layout.addRow('Input File:', input_layout)
-        
-        # Formula column selection
-        self.column_combo = QComboBox()
-        self.column_combo.setMinimumHeight(35)
-        settings_layout.addRow('Formula Column:', self.column_combo)
-        
-        # Output file selection
-        output_layout = QHBoxLayout()
-        self.output_path = QLineEdit()
-        self.output_path.setMinimumHeight(35)
-        output_btn = QPushButton('Browse...')
-        output_btn.setMinimumSize(120, 35)
-        output_btn.clicked.connect(lambda: self.browse_save_file(self.output_path))
-        output_layout.addWidget(self.output_path)
-        output_layout.addWidget(output_btn)
-        settings_layout.addRow('Output File:', output_layout)
+
         
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
         
         # Run button area
-        run_btn = QPushButton('Calculate Molecular Masses')
+        run_btn = QPushButton('Construct Database')
         run_btn.setMinimumHeight(50)  # 只设置高度
         run_btn.setStyleSheet("""
             QPushButton {
